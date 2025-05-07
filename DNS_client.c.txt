@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#define SERVER_IP "127.0.0.1"
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+int main() {
+    int sock_fd;
+    struct sockaddr_in server_addr;
+    char hostname[BUFFER_SIZE];
+    char ip_str[BUFFER_SIZE];
+
+    // Create socket
+    sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_fd < 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Define server address
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr);
+
+    // Connect to server
+    if (connect(sock_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Connection failed");
+        close(sock_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Get hostname input
+    printf("Enter hostname to resolve: ");
+    fgets(hostname, BUFFER_SIZE, stdin);
+    hostname[strcspn(hostname, "\n")] = 0; // Remove newline
+
+    // Send hostname to server
+    send(sock_fd, hostname, strlen(hostname), 0);
+
+    // Receive IP address from server
+    memset(ip_str, 0, BUFFER_SIZE);
+    if (recv(sock_fd, ip_str, BUFFER_SIZE, 0) < 0) {
+        perror("Receive failed");
+        close(sock_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Resolved IP address: %s\n", ip_str);
+
+    // Close socket
+    close(sock_fd);
+    return 0;
+}
